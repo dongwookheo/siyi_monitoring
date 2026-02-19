@@ -18,7 +18,7 @@
     - PC에서 실행 중인 `sbus_receiver.py`가 이 신호를 실시간으로 **디코딩(Decoding)** 하여 CLI에 표시합니다.
 
 ## 의존성 설치 및 실행
-본 프로젝트는 영상 전송 및 중계를 위해 mediamtx를 서버로 활용합니다.
+본 프로젝트는 영상 전송 및 중계를 위해 MediaMTX를 서버로 활용합니다.
 
 1. Repository clone
    ```bash
@@ -32,17 +32,17 @@
     pip install -e .
     ```
 
-2. MediaMTX 설치 및 환경 설정
+3. MediaMTX 설치 및 환경 설정
     - 제공된 스크립트를 사용하여 서버를 준비합니다.
     - 이 과정에서, `wget`이 미설치되어 있다면, `apt` 를 통해 설치됩니다.
-    - USB 포트를 통해 연결된 `USB-to-TTL` 장치에 권한을 추가합니다 (예시에서는 `/dev/ttyUSB0).
+    - USB 포트를 통해 연결된 `USB-to-TTL` 장치에 권한을 추가합니다 (예시에서는 `/dev/ttyUSB0`).
     ```bash
     chmod +x script/install_mediamtx.sh
     chmod +x script/write_mediamtx_config.sh
     chmod 666 /dev/ttyUSB0
     ```
 
-3. 실행  
+4. 실행  
     a. PC 실행
     - MediaMTX 서버 실행  
         ```
