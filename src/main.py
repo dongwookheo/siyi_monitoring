@@ -7,6 +7,7 @@ from sbus_receiver import SBUSReceiver
 from processor import SignalProcessor
 from visualizer import SBUSVisualizer
 
+
 def main():
     script_location = Path(__file__).resolve()
     project_root = script_location.parent.parent
@@ -24,7 +25,7 @@ def main():
     receiver = SBUSReceiver(**cfg["serial"])
     processor = SignalProcessor(window_size=cfg["filter"]["window_size"])
     visualizer = SBUSVisualizer(deadband=cfg["filter"]["deadband"])
-    
+
     refresh_dt = 1.0 / cfg["ui"]["refresh_hz"]
     last_render = 0
 
@@ -34,26 +35,25 @@ def main():
                 frame = receiver.get_latest_frame()
                 if frame:
                     raw_ch, flags = receiver.decode_channels(frame)
-                    
-                    if not (flags & 0x0C): # Quality Check
+
+                    if not (flags & 0x0C):  # Quality Check
                         filtered = processor.apply_filter(raw_ch)
-                        
+
                         if filtered:
                             now = time.time()
                             if now - last_render >= refresh_dt:
-                                panel, table = visualizer.make_ui(filtered, flags, processor)
-                                
-                                combined = Table.grid(expand=True)
-                                combined.add_row(panel)
-                                combined.add_row(table)
-                                live.update(combined, refresh=True)
+                                ui_table = visualizer.make_ui(
+                                    filtered, flags, processor, cfg["mapping"]
+                                )
+                                live.update(ui_table, refresh=True)
                                 last_render = now
-                
+
                 time.sleep(0.001)
     except KeyboardInterrupt:
         pass
     finally:
         receiver.close()
+
 
 if __name__ == "__main__":
     main()

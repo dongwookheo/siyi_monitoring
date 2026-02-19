@@ -9,3 +9,23 @@ deadband = 6.0
 
 [ui]
 refresh_hz = 30
+
+[mapping]
+ch1 = "R-Stick L/R"
+ch2 = "R-Stick U/D"
+ch3 = "L-Stick U/D"
+ch4 = "L-Stick L/R"
+ch5 = "Mode Switch M1/2/3"
+ch6 = "Left Dial L/R"
+ch7 = "Right Dial L/R"
+ch8 = "Rocker U/D"
+ch9 = "Rocker L/R"
+ch10 = "L-Switch H/M/L"
+ch11 = "R-Switch H/M/L"
+ch12 = "R1 Button"
+ch13 = "R2 Button"
+ch14 = "R3 Button"
+ch15 = "L1 Button"
+ch16 = "L2 Button"
+ch17 = "Left-Top Button"
+ch18 = "Right-Top Button"
