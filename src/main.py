@@ -1,5 +1,6 @@
 import time
 import tomllib
+from pathlib import Path
 from rich.live import Live
 from rich.table import Table
 from sbus_receiver import SBUSReceiver
@@ -7,7 +8,17 @@ from processor import SignalProcessor
 from visualizer import SBUSVisualizer
 
 def main():
-    with open("config.toml", "rb") as f:
+    script_location = Path(__file__).resolve()
+    project_root = script_location.parent.parent
+    config_path = project_root / "config.toml"
+
+    if not config_path.exists():
+        config_path = Path("config.toml")
+        if not config_path.exists():
+            print(f"config.toml 파일을 찾을 수 없음")
+            return
+
+    with open(config_path, "rb") as f:
         cfg = tomllib.load(f)
 
     receiver = SBUSReceiver(**cfg["serial"])
