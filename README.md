@@ -6,16 +6,16 @@
 <img width="500" height="300" alt="Image" src="https://github.com/user-attachments/assets/d61082c5-1718-4a1c-b046-b7765e0a8286" />
 
 1. 영상 획득 (Video Input):
-    - **카메라(Camera)**가 USB 또는 HDMI를 통해 PC에 직접 연결됩니다.
+    - **카메라(Camera)** 가 USB 또는 HDMI를 통해 PC에 직접 연결됩니다.
     - PC는 카메라로부터 고화질 영상을 직접 수신합니다.
 2. 영상 전송 및 피드백 (Video Feedback):
-    - PC에서 처리된 영상 신호는 연결된 **에어 유닛(Air Unit)**으로 전달됩니다.
+    - PC에서 처리된 영상 신호는 연결된 **에어 유닛(Air Unit)** 으로 전달됩니다.
     - 에어 유닛은 이 신호를 무선 링크를 통해 UniRC 7 조종기로 송신합니다.
     - 사용자는 WebRTC 주소로 접속하여, 조종기의 화면을 통해 실시간 영상을 확인합니다.
 3. 조종 신호 및 디코딩 (Control & SBUS Decoding):
     - 사용자가 조종기를 조작하면 제어 신호가 무선으로 에어 유닛에 도달합니다.
     - 에어 유닛은 이 신호를 SBUS 형식으로 PC에 전달합니다.
-    - PC에서 실행 중인 `sbus_receiver.py`가 이 신호를 실시간으로 **디코딩(Decoding)**하여 CLI에 표시합니다.
+    - PC에서 실행 중인 `sbus_receiver.py`가 이 신호를 실시간으로 **디코딩(Decoding)** 하여 CLI에 표시합니다.
 
 ## 의존성 설치 및 실행
 본 프로젝트는 영상 전송 및 중계를 위해 mediamtx를 서버로 활용합니다.
