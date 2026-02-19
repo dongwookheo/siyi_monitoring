@@ -1,7 +1,0 @@
-pyproject.toml
-src/sbus_monitor.egg-info/PKG-INFO
-src/sbus_monitor.egg-info/SOURCES.txt
-src/sbus_monitor.egg-info/dependency_links.txt
-src/sbus_monitor.egg-info/entry_points.txt
-src/sbus_monitor.egg-info/requires.txt
-src/sbus_monitor.egg-info/top_level.txt

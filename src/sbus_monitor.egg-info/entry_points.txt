@@ -1,2 +1,0 @@
-[console_scripts]
-sbus-run = sbus_monitor.main:main
