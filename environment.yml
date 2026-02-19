@@ -1,4 +1,4 @@
-name: sbus_env
+name: siyi_monitoring
 channels:
   - defaults
   - conda-forge
