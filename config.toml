@@ -1,0 +1,11 @@
+[serial]
+port = "/dev/ttyUSB0"
+baudrate = 100000
+timeout = 0
+
+[filter]
+window_size = 9
+deadband = 6.0
+
+[ui]
+refresh_hz = 30

@@ -1,0 +1,10 @@
+name: sbus_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pyserial
+  - pip:
+    - rich
