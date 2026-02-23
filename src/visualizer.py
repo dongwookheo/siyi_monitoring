@@ -53,12 +53,27 @@ class SBUSVisualizer:
         # 이름에 L/R 또는 Dial이 포함되면 좌우 화살표, 아니면 상하 화살표
         is_horizontal = any(x in name for x in ["L/R", "Dial", "Rocker(L/R)"])
 
-        if percent > self.deadband:
-            icon = "▶" if is_horizontal else "▲"
-            return f"[bold green]{icon}[/]"
-        if percent < -self.deadband:
-            icon = "◀" if is_horizontal else "▼"
-            return f"[bold red]{icon}[/]"
+        # Left Dial은 화살표 방향 반전 (왼쪽으로 돌림=값증가=녹색◀, 오른쪽으로 돌림=값감소=빨간색▶)
+        is_left_dial = "Left Dial" in name
+
+        if percent > self.deadband:  # 값 증가
+            if is_left_dial:
+                # Left Dial: 왼쪽으로 돌려서 값 증가 → 녹색 ◀
+                return f"[bold green]◀[/]"
+            else:
+                # 일반: 오른쪽/위로 값 증가 → 녹색 ▶/▲
+                icon = "▶" if is_horizontal else "▲"
+                return f"[bold green]{icon}[/]"
+
+        if percent < -self.deadband:  # 값 감소
+            if is_left_dial:
+                # Left Dial: 오른쪽으로 돌려서 값 감소 → 빨간색 ▶
+                return f"[bold red]▶[/]"
+            else:
+                # 일반: 왼쪽/아래로 값 감소 → 빨간색 ◀/▼
+                icon = "◀" if is_horizontal else "▼"
+                return f"[bold red]{icon}[/]"
+
         return "■"
 
     def get_status_display(self, val: int, name: str, processor, ch_idx=None):

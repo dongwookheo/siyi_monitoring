@@ -24,10 +24,7 @@ def main():
         cfg = tomllib.load(f)
 
     receiver = SBUSReceiver(**cfg["serial"])
-    processor = SignalProcessor(
-        window_size=cfg["filter"]["window_size"],
-        mapping=cfg["mapping"]
-    )
+    processor = SignalProcessor(window_size=cfg["filter"]["window_size"])
     visualizer = SBUSVisualizer(deadband=cfg["filter"]["deadband"])
 
     refresh_dt = 1.0 / cfg["ui"]["refresh_hz"]
