@@ -6,6 +6,7 @@ from rich.table import Table
 from sbus_receiver import SBUSReceiver
 from processor import SignalProcessor
 from visualizer import SBUSVisualizer
+from shared_sbus import SBUSSharedMemory
 
 
 def main():
@@ -23,14 +24,25 @@ def main():
         cfg = tomllib.load(f)
 
     receiver = SBUSReceiver(**cfg["serial"])
-    processor = SignalProcessor(window_size=cfg["filter"]["window_size"])
+    processor = SignalProcessor(
+        window_size=cfg["filter"]["window_size"],
+        mapping=cfg["mapping"]
+    )
     visualizer = SBUSVisualizer(deadband=cfg["filter"]["deadband"])
 
     refresh_dt = 1.0 / cfg["ui"]["refresh_hz"]
     last_render = 0
 
     try:
-        with Live(screen=False, auto_refresh=False) as live:
+        with (
+            Live(screen=False, auto_refresh=False) as live,
+            SBUSSharedMemory(create=True) as shared_mem,
+        ):
+
+            print(
+                "공유 메모리 생성됨: 다른 프로세스에서 SBUS 데이터를 읽을 수 있습니다."
+            )
+
             while True:
                 frame = receiver.get_latest_frame()
                 if frame:
@@ -40,6 +52,9 @@ def main():
                         filtered = processor.apply_filter(raw_ch)
 
                         if filtered:
+                            # 필터링된 데이터를 공유 메모리에 쓰기
+                            shared_mem.write(filtered, flags)
+
                             now = time.time()
                             if now - last_render >= refresh_dt:
                                 ui_table = visualizer.make_ui(

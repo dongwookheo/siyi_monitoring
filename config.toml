@@ -11,15 +11,16 @@ deadband = 6.0
 refresh_hz = 30
 
 [mapping]
+# UniRC 7의 UniGCS에서 설정을 맞춰주어야함
 ch1 = "R-Stick L/R"
 ch2 = "R-Stick U/D"
 ch3 = "L-Stick U/D"
 ch4 = "L-Stick L/R"
-ch5 = "Mode Switch M1/2/3"
-ch6 = "Left Dial L/R"
-ch7 = "Right Dial L/R"
-ch8 = "Rocker U/D"
-ch9 = "Rocker L/R"
+ch5 = "Mode Switch (6)"  # 3 steps: (3), 6 steps: (6)
+ch6 = "Left Top Button"  # Left Dial, Left Top Button
+ch7 = "Right Top Button"  # Right Dial, Right Top Button
+ch8 = "Left Bottom Button"  # Rocker U/D, Left Bottom Button
+ch9 = "Right Bottom Button"  # Rocker L/R, Right Bottom Button
 ch10 = "L-Switch H/M/L"
 ch11 = "R-Switch H/M/L"
 ch12 = "R1 Button"

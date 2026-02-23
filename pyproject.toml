@@ -11,6 +11,7 @@ requires-python = ">=3.11" # tomllib 사용을 위해 3.11 권장
 dependencies = [
     "pyserial",
     "rich",
+    "PyGObject",
 ]
 
 [project.scripts]
