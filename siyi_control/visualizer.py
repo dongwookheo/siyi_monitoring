@@ -1,0 +1,103 @@
+import re
+
+from rich.table import Table
+
+
+class SBUSVisualizer:
+    """SBUS 채널 데이터를 콘솔에 시각적으로 표시하는 클래스"""
+
+    def __init__(self, deadband_percent: float = 6.0, num_channels: int = 16):
+        """시각화에 사용할 데드밴드 퍼센트와 표시할 채널 수를 설정하는 생성자"""
+        self.deadband_percent = deadband_percent
+        self.num_channels = num_channels
+
+    def make_table(self, channels: list[int], flags: int, processor, names: dict):
+        """SBUS 채널 데이터와 플래그를 받아서 콘솔에 표시할 테이블을 생성하는 함수"""
+        table = Table(
+            title="SIYI SBUS Monitoring",
+            show_lines=True,
+            caption=self._flags_text(flags),
+            expand=True,
+        )
+        table.add_column("CH", justify="center", width=4)
+        table.add_column("Name", justify="left", width=24)
+        table.add_column("RAW", justify="right", width=6)
+        table.add_column("Status", justify="center", width=16)
+        table.add_column("Direction", justify="center", width=8)
+
+        for idx in range(min(self.num_channels, len(channels))):
+            name = names.get(f"ch{idx + 1}", f"CH{idx + 1}")
+            value = channels[idx]
+            percent = processor.normalize_percent(value)
+            status = self._status(value, percent, name)
+            direction = self._direction(percent, name) if self._is_analog(name) else "-"
+
+            table.add_row(
+                f"{idx + 1:02d}",
+                name,
+                f"{value:>4}",
+                status,
+                direction,
+            )
+
+        return table
+
+    def _flags_text(self, flags: int) -> str:
+        """SBUS 프레임의 플래그 상태를 텍스트로 표현하는 함수"""
+        frame_lost = "YES" if flags & 0x04 else "NO"
+        failsafe = "YES" if flags & 0x08 else "NO"
+        return f"FRAME_LOST={frame_lost} | FAILSAFE={failsafe}"
+
+    def _status(self, value: int, percent: float, name: str) -> str:
+        """SBUS 채널의 상태를 텍스트로 표현하는 함수"""
+        if "Mode Switch" in name or "Mode switch" in name:
+            return self._mode_status(value, self._mode_steps(name))
+
+        if "H/M/L" in name or "Switch" in name:
+            if value > 1500:
+                return "[bold green]HIGH[/]"
+            if value > 500:
+                return "[bold yellow]MID[/]"
+            return "[bold red]LOW[/]"
+
+        if "Button" in name:
+            return "[bold cyan]PUSH[/]" if value > 1300 else "IDLE"
+
+        return f"{percent:>6.1f}%"
+
+    def _mode_steps(self, name: str) -> int:
+        """Mode switch의 단계 수를 이름에서 추출하는 함수"""
+        match = re.search(r"\((\d+)\)", name)
+        return int(match.group(1)) if match else 3
+
+    def _mode_status(self, value: int, steps: int) -> str:
+        """Mode switch의 상태를 텍스트로 표현하는 함수"""
+        colors = ["red", "dark_orange3", "yellow", "green", "cyan", "magenta"]
+        value = max(172, min(value, 1811))
+        step_size = (1811 - 172) / steps
+        mode_idx = min(int((value - 172) / step_size), steps - 1)
+        color = colors[mode_idx % len(colors)]
+        return f"[bold {color}]M{mode_idx + 1}[/]"
+
+    def _is_analog(self, name: str) -> bool:
+        """채널 이름에서 아날로그 입력 여부를 판단하는 함수"""
+        if any(keyword in name for keyword in ["Button", "Switch", "Mode switch"]):
+            return False
+        return any(keyword in name for keyword in ["Stick", "Dial", "Rocker"])
+
+    def _direction(self, percent: float, name: str) -> str:
+        """채널의 방향을 텍스트로 표현하는 함수"""
+        is_horizontal = any(x in name for x in ["L/R", "Dial", "Rocker(L/R)"])
+        is_left_dial = "Left Dial" in name
+
+        if percent > self.deadband_percent:
+            if is_left_dial:
+                return "[bold green]<[/]"
+            return "[bold green]>[/]" if is_horizontal else "[bold green]^[/]"
+
+        if percent < -self.deadband_percent:
+            if is_left_dial:
+                return "[bold red]>[/]"
+            return "[bold red]<[/]" if is_horizontal else "[bold red]v[/]"
+
+        return "-"

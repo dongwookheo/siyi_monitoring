@@ -1,0 +1,68 @@
+siyi_controller:
+  ros__parameters:
+    serial_port: /dev/ttyUSB0
+    serial_baudrate: 100000
+    serial_timeout: 0.0
+
+    idle_sleep_sec: 0.1
+    filter_window_size: 9
+
+    # Relative topic names keep both cases simple:
+    # - no namespace: /joy, /siyi_event
+    # - namespace:=siyi: /siyi/joy, /siyi/siyi_event
+    joy_topic: joy
+    event_topic: siyi_event
+    publish_events: true
+
+    # ROS Joy vector sizes.
+    axis_count: 6
+    button_count: 16
+
+    # Axis mapping uses 1-based SBUS channel numbers.
+    # Default follows the senior draft:
+    # axes[0] <- ch4, axes[1] <- ch3, axes[2] <- ch1, axes[5] <- ch2.
+    axis_indices: [0, 1, 2, 5]
+    axis_channels: [4, 3, 1, 2]
+    axis_scales: [1.0, 1.0, 1.0, 1.0]
+
+    # SIYI joystick/button observed range. Mode switch calibration is separate
+    # and should not reuse this range for step detection.
+    joy_min_value: 272
+    joy_mid_value: 992
+    joy_max_value: 1712
+    joy_deadband: 0.05
+
+    # Button mapping also uses 1-based SBUS channel numbers.
+    # Defaults: L1, L2, R1, R2, R3.
+    button_indices: [0, 1, 2, 3, 4]
+    button_channels: [15, 16, 12, 13, 14]
+    button_names: [l1, l2, r1, r2, r3]
+    button_pressed_min: 1500
+    # 0 means use button_pressed_min; set a positive value for per-button override.
+    button_pressed_mins: [0, 0, 0, 0, 0]
+    # semantic: l1_pressed, indexed: button_0_pressed, both: publish both.
+    button_event_format: semantic
+
+    # SIYI receiver is expected around 50 Hz, so 100 ms means about 5 frames.
+    input_timeout_ms: 100.0
+    reconnect_interval_sec: 1.0
+    log_raw_channels: false
+
+    ui_deadband_percent: 6.0
+    channel_names:
+      ch1: R-Stick L/R
+      ch2: R-Stick U/D
+      ch3: L-Stick U/D
+      ch4: L-Stick L/R
+      ch5: Mode Switch (6)
+      ch6: Left Dial
+      ch7: Right Dial
+      ch8: Left Bottom Button
+      ch9: Right Bottom Button
+      ch10: L-Switch H/M/L
+      ch11: R-Switch H/M/L
+      ch12: R1 Button
+      ch13: R2 Button
+      ch14: R3 Button
+      ch15: L1 Button
+      ch16: L2 Button
