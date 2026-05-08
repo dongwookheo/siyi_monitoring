@@ -12,6 +12,8 @@ from siyi_control.mapping import (
     ButtonMapping,
     ButtonStateTracker,
     JoyCalibration,
+    ModeSwitchMapping,
+    ModeSwitchStep,
     build_joy_vectors,
     zero_joy,
 )
@@ -91,6 +93,33 @@ def make_button_mappings(config: dict) -> list[ButtonMapping]:
     return mappings
 
 
+def make_mode_switch_mappings(config: dict) -> list[ModeSwitchMapping]:
+    channel = int(get_config_value(config, "mode_switch_channel", 5))
+    if channel <= 0:
+        return []
+
+    mins = config.get("mode_switch_range_mins", [180, 500, 800, 1100, 1300, 1700])
+    maxs = config.get("mode_switch_range_maxs", [210, 610, 890, 1170, 1490, 1810])
+    buttons = config.get("mode_switch_buttons", [0, 1, 2, 3, 4, 5])
+    names = config.get("mode_switch_names", ["m1", "m2", "m3", "m4", "m5", "m6"])
+
+    steps = []
+    for idx, min_value in enumerate(mins):
+        if idx >= len(maxs) or idx >= len(buttons):
+            break
+        name = str(names[idx]) if idx < len(names) else f"m{idx + 1}"
+        steps.append(
+            ModeSwitchStep(
+                min_value=int(min_value),
+                max_value=int(maxs[idx]),
+                button=int(buttons[idx]),
+                name=name,
+            )
+        )
+
+    return [ModeSwitchMapping(channel=channel, steps=steps)] if steps else []
+
+
 def get_config_value(config: dict, key: str, fallback):
     value = config.get(key, fallback)
     return fallback if value is None else value
@@ -151,15 +180,16 @@ def main() -> None:
         baudrate=baudrate,
         timeout=timeout,
     )
-    processor = SignalProcessor(window_size=filter_window_size)
     calibration = JoyCalibration(
         min_value=int(get_config_value(config, "joy_min_value", 272)),
         mid_value=int(get_config_value(config, "joy_mid_value", 992)),
         max_value=int(get_config_value(config, "joy_max_value", 1712)),
         deadband=float(get_config_value(config, "joy_deadband", 0.05)),
     )
+    processor = SignalProcessor(window_size=filter_window_size)
     axis_mappings = make_axis_mappings(config)
     button_mappings = make_button_mappings(config)
+    mode_switch_mappings = make_mode_switch_mappings(config)
 
     axis_count = int(get_config_value(config, "axis_count", 6))
     button_count = int(get_config_value(config, "button_count", 16))
@@ -167,6 +197,14 @@ def main() -> None:
     button_names_by_index = {
         mapping.button: mapping.name for mapping in button_mappings if mapping.name
     }
+    button_names_by_index.update(
+        {
+            step.button: step.name
+            for mapping in mode_switch_mappings
+            for step in mapping.steps
+            if step.name
+        }
+    )
     button_tracker = ButtonStateTracker(
         button_count=button_count,
         button_names=button_names_by_index,
@@ -180,8 +218,16 @@ def main() -> None:
     last_input_time = None
     timed_out = False
     visualizer = SBUSVisualizer(
-        deadband_percent=float(get_config_value(config, "ui_deadband_percent", 6.0)),
+        deadband_percent=float(
+            get_config_value(
+                config,
+                "ui_deadband_percent",
+                calibration.deadband * 100.0,
+            )
+        ),
         num_channels=16,
+        calibration=calibration,
+        mode_switch_mappings=mode_switch_mappings,
     )
     names = channel_names(config)
 
@@ -236,6 +282,7 @@ def main() -> None:
                     axis_count,
                     button_count,
                     button_pressed_min,
+                    mode_switch_mappings,
                 )
                 events = button_tracker.update(buttons)
 

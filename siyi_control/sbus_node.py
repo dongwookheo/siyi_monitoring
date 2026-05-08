@@ -12,6 +12,10 @@ from siyi_control.mapping import (
     ButtonMapping,
     ButtonStateTracker,
     JoyCalibration,
+    ModeSwitchMapping,
+    ModeSwitchStep,
+    ThreePositionMapping,
+    ThreePositionStep,
     build_joy_vectors,
     zero_joy,
 )
@@ -40,6 +44,7 @@ class SiyiSbusNode(Node):
         )
 
         self.last_input_time: Optional[float] = None
+        self.failsafe_start_time: Optional[float] = None
         self.next_connect_time = 0.0
         self.timed_out = False
         self.failsafe_active = False
@@ -80,12 +85,36 @@ class SiyiSbusNode(Node):
         self.declare_parameter("button_pressed_min", 1500)
         self.declare_parameter("button_pressed_mins", [0, 0, 0, 0, 0])
         self.declare_parameter("button_event_format", "semantic")
+        self.declare_parameter("three_position_indices", [11, 12])
+        self.declare_parameter("three_position_channels", [13, 14])
+        self.declare_parameter(
+            "three_position_names", ["left_position", "right_position"]
+        )
+        self.declare_parameter("three_position_range_mins", [260, 980, 1700])
+        self.declare_parameter("three_position_range_maxs", [300, 1100, 1800])
+        self.declare_parameter("three_position_values", [1, 0, 2])
+        self.declare_parameter("mode_switch_channel", 5)
+        self.declare_parameter("mode_switch_buttons", [0, 1, 2, 3, 4, 5])
+        self.declare_parameter(
+            "mode_switch_range_mins",
+            [180, 500, 800, 1100, 1300, 1700],
+        )
+        self.declare_parameter(
+            "mode_switch_range_maxs",
+            [210, 610, 890, 1170, 1490, 1810],
+        )
+        self.declare_parameter(
+            "mode_switch_names",
+            ["m1", "m2", "m3", "m4", "m5", "m6"],
+        )
 
         self.declare_parameter("input_timeout_ms", 100.0)
+        self.declare_parameter("failsafe_zero_delay_ms", 100.0)
         self.declare_parameter("reconnect_interval_sec", 1.0)  # 재연결 시도 간격
         self.declare_parameter("log_raw_channels", False)  # 원시 채널 로깅 여부
 
     def _load_parameters(self) -> None:
+        """매개변수 로드 및 관련 데이터 구조 초기화 함수"""
         self.serial_port = str(self.get_parameter("serial_port").value)
         self.serial_baudrate = int(self.get_parameter("serial_baudrate").value)
         self.serial_timeout = float(self.get_parameter("serial_timeout").value)
@@ -103,11 +132,28 @@ class SiyiSbusNode(Node):
         self.axis_mappings = self._load_axis_mappings()
         self.button_pressed_min = int(self.get_parameter("button_pressed_min").value)
         self.button_mappings = self._load_button_mappings()
+        self.mode_switch_mappings = self._load_mode_switch_mappings()
+        self.three_position_mappings = self._load_three_position_mappings()
         self.button_names_by_index = {
             mapping.button: mapping.name
             for mapping in self.button_mappings
             if mapping.name
         }
+        self.button_names_by_index.update(
+            {
+                step.button: step.name
+                for mapping in self.mode_switch_mappings
+                for step in mapping.steps
+                if step.name
+            }
+        )
+        self.button_names_by_index.update(
+            {
+                mapping.button: mapping.name
+                for mapping in self.three_position_mappings
+                if mapping.name
+            }
+        )
         self.button_event_format = str(
             self.get_parameter("button_event_format").value
         ).lower()
@@ -127,12 +173,16 @@ class SiyiSbusNode(Node):
         self.input_timeout_sec = (
             float(self.get_parameter("input_timeout_ms").value) / 1000.0
         )
+        self.failsafe_zero_delay_sec = (
+            float(self.get_parameter("failsafe_zero_delay_ms").value) / 1000.0
+        )
         self.reconnect_interval_sec = float(
             self.get_parameter("reconnect_interval_sec").value
         )
         self.log_raw_channels = bool(self.get_parameter("log_raw_channels").value)
 
     def _load_axis_mappings(self) -> list[AxisMapping]:
+        """Axis 매핑 설정을 매개변수에서 로드하는 함수"""
         indices = self._int_list_parameter("axis_indices")
         channels = self._int_list_parameter("axis_channels")
         scales = self._float_list_parameter("axis_scales")
@@ -146,6 +196,7 @@ class SiyiSbusNode(Node):
         return mappings
 
     def _load_button_mappings(self) -> list[ButtonMapping]:
+        """Button 매핑 설정을 매개변수에서 로드하는 함수"""
         indices = self._int_list_parameter("button_indices")
         channels = self._int_list_parameter("button_channels")
         names = self._str_list_parameter("button_names")
@@ -171,19 +222,87 @@ class SiyiSbusNode(Node):
             )
         return mappings
 
+    def _load_three_position_mappings(self) -> list[ThreePositionMapping]:
+        """Three position switch 매핑 설정을 매개변수에서 로드하는 함수"""
+        indices = self._int_list_parameter("three_position_indices")
+        channels = self._int_list_parameter("three_position_channels")
+        names = self._str_list_parameter("three_position_names")
+        range_mins = self._int_list_parameter("three_position_range_mins")
+        range_maxs = self._int_list_parameter("three_position_range_maxs")
+        values = self._int_list_parameter("three_position_values")
+
+        steps = []
+        for idx, min_value in enumerate(range_mins):
+            if idx >= len(range_maxs) or idx >= len(values):
+                break
+            steps.append(
+                ThreePositionStep(
+                    min_value=min_value,
+                    max_value=range_maxs[idx],
+                    output_value=values[idx],
+                )
+            )
+
+        mappings = []
+        for idx, button in enumerate(indices):
+            if idx >= len(channels):
+                break
+            name = names[idx] if idx < len(names) else ""
+            mappings.append(
+                ThreePositionMapping(
+                    button=button,
+                    channel=channels[idx],
+                    name=name,
+                    steps=steps,
+                )
+            )
+
+        return mappings
+
+    def _load_mode_switch_mappings(self) -> list[ModeSwitchMapping]:
+        """Mode switch 매핑 설정을 매개변수에서 로드하는 함수"""
+        channel = int(self.get_parameter("mode_switch_channel").value)
+        if channel <= 0:
+            return []
+
+        mins = self._int_list_parameter("mode_switch_range_mins")
+        maxs = self._int_list_parameter("mode_switch_range_maxs")
+        buttons = self._int_list_parameter("mode_switch_buttons")
+        names = self._str_list_parameter("mode_switch_names")
+
+        steps = []
+        for idx, min_value in enumerate(mins):
+            if idx >= len(maxs) or idx >= len(buttons):
+                break
+            name = names[idx] if idx < len(names) else f"m{idx + 1}"
+            steps.append(
+                ModeSwitchStep(
+                    min_value=min_value,
+                    max_value=maxs[idx],
+                    button=buttons[idx],
+                    name=name,
+                )
+            )
+
+        return [ModeSwitchMapping(channel=channel, steps=steps)] if steps else []
+
     def _int_list_parameter(self, name: str) -> list[int]:
+        """매개변수에서 정수 리스트를 로드하는 함수"""
         value = self.get_parameter(name).value
         return [int(item) for item in value]
 
     def _float_list_parameter(self, name: str) -> list[float]:
+        """매개변수에서 실수 리스트를 로드하는 함수"""
         value = self.get_parameter(name).value
         return [float(item) for item in value]
 
     def _str_list_parameter(self, name: str) -> list[str]:
+        """매개변수에서 문자열 리스트를 로드하는 함수"""
         value = self.get_parameter(name).value
         return [str(item) for item in value]
 
     def _connect(self) -> None:
+        """SBUS 수신기 연결을 시도하는 함수"""
         now = self._now_sec()
         if now < self.next_connect_time:
             return
@@ -233,14 +352,17 @@ class SiyiSbusNode(Node):
             if not self.failsafe_active:
                 self.get_logger().warn("SBUS failsafe flag is active")
                 self._publish_event("sbus_failsafe")
+                self.failsafe_start_time = now
             self.failsafe_active = True
-            self._publish_zero_joy()
+            if self._failsafe_zero_due(now):
+                self._publish_zero_joy()
             return
 
         if self.failsafe_active:
             self.get_logger().info("SBUS failsafe cleared")
             self._publish_event("sbus_failsafe_cleared")
             self.failsafe_active = False
+            self.failsafe_start_time = None
 
         if frame.frame_lost and not self.frame_lost_active:
             self.get_logger().warn("SBUS frame_lost flag is active")
@@ -267,9 +389,16 @@ class SiyiSbusNode(Node):
             self.axis_count,
             self.button_count,
             self.button_pressed_min,
+            self.mode_switch_mappings,
+            self.three_position_mappings,
         )
         self._publish_joy(axes, buttons)
         self._publish_button_events(self.button_tracker.update(buttons))
+
+    def _failsafe_zero_due(self, now: float) -> bool:
+        if self.failsafe_start_time is None:
+            return self.failsafe_zero_delay_sec <= 0.0
+        return now - self.failsafe_start_time >= self.failsafe_zero_delay_sec
 
     def _check_timeout(self) -> None:
         self._handle_input_timeout(self._now_sec())

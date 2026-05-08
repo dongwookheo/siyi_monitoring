@@ -21,6 +21,43 @@ class ButtonMapping:
 
 
 @dataclass
+class ThreePositionStep:
+    """세 단계형 mode switch의 한 단계와 SBUS 채널 값 범위 간 매핑"""
+
+    min_value: int
+    max_value: int
+    output_value: int  # e.g., [1, 0, 2]
+
+
+@dataclass
+class ThreePositionMapping:
+    """세 단계형 mode switch와 Joy button 출력 간 매핑"""
+
+    button: int
+    channel: int
+    name: str = ""
+    steps: list[ThreePositionStep] = None
+
+
+@dataclass
+class ModeSwitchStep:
+    """Mode switch의 한 단계와 Joy button 인덱스 간 매핑"""
+
+    min_value: int
+    max_value: int
+    button: int
+    name: str = ""
+
+
+@dataclass
+class ModeSwitchMapping:
+    """단계형 mode switch와 Joy button one-hot 출력 간 매핑"""
+
+    channel: int  ### SBUS 채널 번호 (1부터 시작)
+    steps: list[ModeSwitchStep]
+
+
+@dataclass
 class ButtonEvent:
     """버튼 상태 변화 이벤트"""
 
@@ -56,6 +93,58 @@ def normalize_axis(value: int, calibration: JoyCalibration) -> float:
     return normalized
 
 
+def decode_mode_switch(
+    value: int,
+    mapping: ModeSwitchMapping,
+) -> ModeSwitchStep | None:
+    """Mode switch 채널 값을 해당 단계로 변환한다."""
+    for step in mapping.steps:
+        if step.min_value <= value < step.max_value:
+            return step
+    return None
+
+
+def apply_mode_switch_buttons(
+    channels: list[int],
+    buttons: list[int],
+    mode_switch_mappings: list[ModeSwitchMapping],
+) -> None:
+    """Mode switch를 Joy button one-hot 값으로 반영한다."""
+    for mapping in mode_switch_mappings:
+        channel_idx = mapping.channel - 1
+        if channel_idx < 0 or channel_idx >= len(channels):
+            continue
+
+        for step in mapping.steps:
+            if 0 <= step.button < len(buttons):
+                buttons[step.button] = 0
+
+        active_step = decode_mode_switch(channels[channel_idx], mapping)
+        if active_step is None:
+            continue
+        if 0 <= active_step.button < len(buttons):
+            buttons[active_step.button] = 1
+
+
+def apply_three_position_buttons(
+    channels: list[int],
+    buttons: list[int],
+    three_position_mappings: list[ThreePositionMapping],
+) -> None:
+    for mapping in three_position_mappings:
+        channels_idx = mapping.channel - 1
+        if channels_idx < 0 or channels_idx >= len(channels):
+            continue
+        if mapping.button < 0 or mapping.button >= len(buttons):
+            continue
+
+        raw = channels[channels_idx]
+        for step in mapping.steps or []:
+            if step.min_value <= raw < step.max_value:
+                buttons[mapping.button] = step.output_value
+                break
+
+
 def build_joy_vectors(
     channels: list[int],
     axis_mappings: list[AxisMapping],
@@ -64,6 +153,8 @@ def build_joy_vectors(
     axis_count: int,
     button_count: int,
     button_pressed_min: int,
+    mode_switch_mappings: list[ModeSwitchMapping] | None = None,
+    three_position_mappings: list[ThreePositionMapping] | None = None,
 ) -> tuple[list[float], list[int]]:
     """SBUS 채널 데이터를 조이스틱 axes와 버튼 상태로 변환하는 함수"""
     axes = [0.0] * axis_count
@@ -92,6 +183,8 @@ def build_joy_vectors(
         )
         buttons[mapping.button] = int(channels[channel_idx] >= pressed_min)
 
+    apply_mode_switch_buttons(channels, buttons, mode_switch_mappings or [])
+    apply_three_position_buttons(channels, buttons, three_position_mappings or [])
     return axes, buttons
 
 

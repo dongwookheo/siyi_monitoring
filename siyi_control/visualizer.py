@@ -2,14 +2,33 @@ import re
 
 from rich.table import Table
 
+from siyi_control.mapping import (
+    JoyCalibration,
+    ModeSwitchMapping,
+    decode_mode_switch,
+    normalize_axis,
+)
+
 
 class SBUSVisualizer:
     """SBUS 채널 데이터를 콘솔에 시각적으로 표시하는 클래스"""
 
-    def __init__(self, deadband_percent: float = 6.0, num_channels: int = 16):
+    def __init__(
+        self,
+        deadband_percent: float | None = None,
+        num_channels: int = 16,
+        calibration: JoyCalibration | None = None,
+        mode_switch_mappings: list[ModeSwitchMapping] | None = None,
+    ):
         """시각화에 사용할 데드밴드 퍼센트와 표시할 채널 수를 설정하는 생성자"""
-        self.deadband_percent = deadband_percent
+        self.calibration = calibration or JoyCalibration()
+        self.deadband_percent = (
+            self.calibration.deadband * 100.0
+            if deadband_percent is None
+            else deadband_percent
+        )
         self.num_channels = num_channels
+        self.mode_switch_mappings = mode_switch_mappings or []
 
     def make_table(self, channels: list[int], flags: int, processor, names: dict):
         """SBUS 채널 데이터와 플래그를 받아서 콘솔에 표시할 테이블을 생성하는 함수"""
@@ -28,8 +47,8 @@ class SBUSVisualizer:
         for idx in range(min(self.num_channels, len(channels))):
             name = names.get(f"ch{idx + 1}", f"CH{idx + 1}")
             value = channels[idx]
-            percent = processor.normalize_percent(value)
-            status = self._status(value, percent, name)
+            percent = self._normalize_percent(value)
+            status = self._status(value, percent, name, idx + 1)
             direction = self._direction(percent, name) if self._is_analog(name) else "-"
 
             table.add_row(
@@ -42,16 +61,20 @@ class SBUSVisualizer:
 
         return table
 
+    def _normalize_percent(self, value: int) -> float:
+        """Joy 보정값을 기준으로 SBUS 채널 값을 퍼센트로 정규화한다."""
+        return normalize_axis(value, self.calibration) * 100.0
+
     def _flags_text(self, flags: int) -> str:
         """SBUS 프레임의 플래그 상태를 텍스트로 표현하는 함수"""
         frame_lost = "YES" if flags & 0x04 else "NO"
         failsafe = "YES" if flags & 0x08 else "NO"
         return f"FRAME_LOST={frame_lost} | FAILSAFE={failsafe}"
 
-    def _status(self, value: int, percent: float, name: str) -> str:
+    def _status(self, value: int, percent: float, name: str, channel: int) -> str:
         """SBUS 채널의 상태를 텍스트로 표현하는 함수"""
         if "Mode Switch" in name or "Mode switch" in name:
-            return self._mode_status(value, self._mode_steps(name))
+            return self._mode_status(value, channel, name)
 
         if "H/M/L" in name or "Switch" in name:
             if value > 1500:
@@ -65,14 +88,21 @@ class SBUSVisualizer:
 
         return f"{percent:>6.1f}%"
 
-    def _mode_steps(self, name: str) -> int:
-        """Mode switch의 단계 수를 이름에서 추출하는 함수"""
-        match = re.search(r"\((\d+)\)", name)
-        return int(match.group(1)) if match else 3
-
-    def _mode_status(self, value: int, steps: int) -> str:
+    def _mode_status(self, value: int, channel: int, name: str) -> str:
         """Mode switch의 상태를 텍스트로 표현하는 함수"""
         colors = ["red", "dark_orange3", "yellow", "green", "cyan", "magenta"]
+        for mapping in self.mode_switch_mappings:
+            if mapping.channel != channel:
+                continue
+            step = decode_mode_switch(value, mapping)
+            if step is None:
+                return "-"
+            step_index = mapping.steps.index(step)
+            color = colors[step_index % len(colors)]
+            label = step.name.upper() if step.name else f"M{step_index + 1}"
+            return f"[bold {color}]{label}[/]"
+        match = re.search(r"\((\d+)\)", name)
+        steps = int(match.group(1)) if match else 3
         value = max(172, min(value, 1811))
         step_size = (1811 - 172) / steps
         mode_idx = min(int((value - 172) / step_size), steps - 1)

@@ -4,7 +4,7 @@ siyi_controller:
     serial_baudrate: 100000
     serial_timeout: 0.0
 
-    idle_sleep_sec: 0.1
+    idle_sleep_sec: 0.02
     filter_window_size: 9
 
     # Relative topic names keep both cases simple:
@@ -16,53 +16,78 @@ siyi_controller:
 
     # ROS Joy vector sizes.
     axis_count: 6
-    button_count: 16
+    button_count: 15
 
     # Axis mapping uses 1-based SBUS channel numbers.
     # Default follows the senior draft:
     # axes[0] <- ch4, axes[1] <- ch3, axes[2] <- ch1, axes[5] <- ch2.
-    axis_indices: [0, 1, 2, 5]
-    axis_channels: [4, 3, 1, 2]
-    axis_scales: [1.0, 1.0, 1.0, 1.0]
+    axis_indices: [0, 1, 2, 3, 4, 5]
+    axis_channels: [1, 2, 3, 4, 6, 7]
+    axis_scales: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
     # SIYI joystick/button observed range. Mode switch calibration is separate
     # and should not reuse this range for step detection.
-    joy_min_value: 272
-    joy_mid_value: 992
-    joy_max_value: 1712
+    # joy_min_value: 272
+    # joy_mid_value: 992
+    # joy_max_value: 1712
+    # joy_deadband: 0.05
+    #---New SIYI
+    joy_min_value: 280
+    joy_mid_value: 1000
+    joy_max_value: 1720
     joy_deadband: 0.05
 
+
+    # Mode switch maps CH5 to Joy buttons[0:6] as one-hot states.
+    mode_switch_channel: 5
+    mode_switch_buttons: [0, 1, 2, 3, 4, 5]
+    mode_switch_names: [m1, m2, m3, m4, m5, m6]
+    mode_switch_range_mins: [180, 500, 800, 1100, 1300, 1700]
+    mode_switch_range_maxs: [210, 610, 890, 1170, 1490, 1810]
+
     # Button mapping also uses 1-based SBUS channel numbers.
-    # Defaults: L1, L2, R1, R2, R3.
-    button_indices: [0, 1, 2, 3, 4]
-    button_channels: [15, 16, 12, 13, 14]
-    button_names: [l1, l2, r1, r2, r3]
+    # Physical buttons start after the mode switch buttons.
+    button_indices: [6, 7, 8, 9, 10, 13, 14]
+    button_channels: [8, 9, 10, 11, 12, 15, 16]
+    button_names: [l1, l2, r1, r2, r3, left_bottom, right_bottom]
     button_pressed_min: 1500
     # 0 means use button_pressed_min; set a positive value for per-button override.
     button_pressed_mins: [0, 0, 0, 0, 0]
     # semantic: l1_pressed, indexed: button_0_pressed, both: publish both.
     button_event_format: semantic
 
+    # Three position switches
+    three_position_indices: [11, 12]
+    three_position_channels: [13, 14]
+    three_position_names: [left_position, right_position]
+    three_position_range_mins: [260, 980, 1700]
+    three_position_range_maxs: [300, 1100, 1800]
+    three_position_values: [1, 0, 2]
+
     # SIYI receiver is expected around 50 Hz, so 100 ms means about 5 frames.
-    input_timeout_ms: 100.0
+    input_timeout_ms: 200.0
+    # Ignore very short failsafe glitches before publishing zero Joy.
+    # Set to 0.0 to zero immediately on the first failsafe frame.
+    failsafe_zero_delay_ms: 100.0
     reconnect_interval_sec: 1.0
     log_raw_channels: false
 
-    ui_deadband_percent: 6.0
+    # CLI UI direction deadband. If omitted, joy_deadband * 100 is used.
+    # ui_deadband_percent: 6.0
     channel_names:
-      ch1: R-Stick L/R
-      ch2: R-Stick U/D
-      ch3: L-Stick U/D
-      ch4: L-Stick L/R
+      ch1: L-Stick L/R
+      ch2: L-Stick U/D
+      ch3: R-Stick L/R
+      ch4: R-Stick U/D
       ch5: Mode Switch (6)
-      ch6: Left Dial
-      ch7: Right Dial
-      ch8: Left Bottom Button
-      ch9: Right Bottom Button
-      ch10: L-Switch H/M/L
-      ch11: R-Switch H/M/L
-      ch12: R1 Button
-      ch13: R2 Button
-      ch14: R3 Button
-      ch15: L1 Button
-      ch16: L2 Button
+      ch6: Right Dial
+      ch7: Left Dial
+      ch8: L1 Button
+      ch9: L2 Button
+      ch10: R1 Button
+      ch11: R2 Button
+      ch12: R3 Button
+      ch13: Left Switch H/M/L
+      ch14: Right Switch H/M/L
+      ch15: Left Bottom Button
+      ch16: Right Bottom Button
