@@ -9,6 +9,11 @@ from siyi_control.mapping import (
     normalize_axis,
 )
 
+TRIANGLE_UP = "\u25b2"
+TRIANGLE_DOWN = "\u25bc"
+TRIANGLE_LEFT = "\u25c0"
+TRIANGLE_RIGHT = "\u25b6"
+
 
 class SBUSVisualizer:
     """SBUS 채널 데이터를 콘솔에 시각적으로 표시하는 클래스"""
@@ -122,12 +127,20 @@ class SBUSVisualizer:
 
         if percent > self.deadband_percent:
             if is_left_dial:
-                return "[bold green]<[/]"
-            return "[bold green]>[/]" if is_horizontal else "[bold green]^[/]"
+                return f"[bold green]{TRIANGLE_LEFT}[/]"
+            return (
+                f"[bold green]{TRIANGLE_RIGHT}[/]"
+                if is_horizontal
+                else f"[bold green]{TRIANGLE_UP}[/]"
+            )
 
         if percent < -self.deadband_percent:
             if is_left_dial:
-                return "[bold red]>[/]"
-            return "[bold red]<[/]" if is_horizontal else "[bold red]v[/]"
+                return f"[bold red]{TRIANGLE_RIGHT}[/]"
+            return (
+                f"[bold red]{TRIANGLE_LEFT}[/]"
+                if is_horizontal
+                else f"[bold red]{TRIANGLE_DOWN}[/]"
+            )
 
         return "-"
