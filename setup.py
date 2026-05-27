@@ -17,9 +17,9 @@ setup(
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="hdwook",
-    maintainer_email="hdwook@todo.todo",
+    maintainer_email="hdwook3918@gmail.com",
     description="Minimal ROS2 wrapper for SIYI SBUS controller input.",
-    license="TODO",
+    license="MIT",
     entry_points={
         "console_scripts": [
             "sbus_node = siyi_control.sbus_node:main",

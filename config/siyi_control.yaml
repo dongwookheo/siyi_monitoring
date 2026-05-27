@@ -27,15 +27,15 @@ siyi_controller:
 
     # SIYI joystick/button observed range. Mode switch calibration is separate
     # and should not reuse this range for step detection.
-    # joy_min_value: 272
-    # joy_mid_value: 992
-    # joy_max_value: 1712
-    # joy_deadband: 0.05
-    #---New SIYI
-    joy_min_value: 280
-    joy_mid_value: 1000
-    joy_max_value: 1720
+    joy_min_value: 272
+    joy_mid_value: 992
+    joy_max_value: 1712
     joy_deadband: 0.05
+    #---New SIYI
+    # joy_min_value: 280
+    # joy_mid_value: 1000
+    # joy_max_value: 1720
+    # joy_deadband: 0.05
 
 
     # Mode switch maps CH5 to Joy buttons[0:6] as one-hot states.
